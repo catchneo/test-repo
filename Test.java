@@ -106,3 +106,98 @@ public class Test {
 
     }
 }
+
+
+
+
+
+
+
+
+
+public List<TagInfo> deriveFormTagsAndValues(String mergeData, String formTemplateIdRef) throws IBIZException, ServiceHandlerException {
+		ModelBean errors = null;
+		//ModelBean application = null;
+		SAXBuilder builder = null;
+		Document doc = null;
+		String finalString = null;
+		Map<String, String> fieldDataMap = null;
+		List<TagInfo> tagInfoList = new ArrayList<>();
+
+		try {
+			Log.debug("Processing CorrespondenceXMLCreationHandler....");
+
+			MDATemplate formTemplateMDA = (MDATemplate) Store.getModelObject("form-template", "FormTemplate", formTemplateIdRef);
+			ModelBean formTemplate = formTemplateMDA.getBean();
+			String responseTemplateMDA = formTemplate.gets("ResponseTemplateMDA");
+
+			//Convert output to Key-Value pairs
+			String[] lines = mergeData.split("\n");
+			//System.out.println(lines.length);
+			int lineNo = 0;
+			fieldDataMap = new HashMap<>();
+
+			String prevFieldName = null;
+			int startLine = 0, endLine = 0;
+
+			while (lineNo < lines.length) {
+				String val = lines[lineNo].trim().replaceAll("\t", "");
+				if (val.startsWith("^field") || val.startsWith("^global") || val.startsWith("^graph")) {
+					if (prevFieldName != null) {
+						endLine = lineNo;
+						String[] fieldLines = Arrays.copyOfRange(lines, startLine, endLine);
+
+						TagInfo tagInfo = new TagInfo();
+						tagInfo.setTagKey(prevFieldName.replaceAll("\\r",""));
+						tagInfo.setTagValue(Arrays.stream(fieldLines).map(v -> v.replaceAll("\\t","").replaceAll("\\r","").trim()).collect(Collectors.joining(",")));
+						tagInfoList.add(tagInfo);
+					}
+
+					prevFieldName = val.split(" ")[1];
+					startLine = lineNo + 1;
+				}
+				else if(val.startsWith("^form")){
+
+				}
+				lineNo++;
+			}
+
+			// Flush at the end
+			if (prevFieldName != null) {
+				endLine = lineNo;
+				String[] fieldLines = Arrays.copyOfRange(lines, startLine, endLine);
+
+				TagInfo tagInfo = new TagInfo();
+				tagInfo.setTagKey(prevFieldName.replaceAll("\\r",""));
+				tagInfo.setTagValue(Arrays.stream(fieldLines).map(v -> v.replaceAll("\\t","").replaceAll("\\r","").trim()).collect(Collectors.joining(",")));
+				tagInfoList.add(tagInfo);
+			}
+
+			tagInfoList.forEach((k) -> System.out.println("Key: "+k.getTagKey()+ " Value::::"+k.getTagValue()));
+
+		} catch (Exception e) {
+			Log.debug("CorrespondenceXMLCreationHandler: Exception in CorrespondenceXMLCreationHandler.process");
+			Log.error(e);
+		}
+
+		return tagInfoList;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
